@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      POSTGRES_DB: djangodb
+      POSTGRES_USER: djangouser
+      POSTGRES_PASSWORD: djangopass
+    ports:
+      - "5432:5432"
+
+  web:
+    build: .
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - DEBUG=1
+      - DATABASE_URL=postgresql://djangouser:djangopass@db:5432/djangodb
+      - AWS_ACCESS_KEY_ID=your_access_key
+      - AWS_SECRET_ACCESS_KEY=your_secret_key
+      - AWS_STORAGE_BUCKET_NAME=your_bucket_name
+      - AWS_S3_REGION_NAME=us-east-1
+
+volumes:
+  postgres_data:
