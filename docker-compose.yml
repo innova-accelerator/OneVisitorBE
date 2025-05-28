@@ -1,33 +1,42 @@
 version: '3.8'
 
 services:
-  db:
-    image: postgres:15
-    volumes:
-      - postgres_data:/var/lib/postgresql/data/
-    environment:
-      POSTGRES_DB: djangodb
-      POSTGRES_USER: djangouser
-      POSTGRES_PASSWORD: djangopass
-    ports:
-      - "5432:5432"
-
   web:
     build: .
-    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    command: gunicorn --config /app/gunicorn.conf.py --reload onevisitorbe.wsgi:application
     volumes:
       - .:/app
     ports:
-      - "8000:8000"
-    depends_on:
-      - db
+      - "8323:8323"
     environment:
       - DEBUG=1
-      - DATABASE_URL=postgresql://djangouser:djangopass@db:5432/djangodb
-      - AWS_ACCESS_KEY_ID=your_access_key
-      - AWS_SECRET_ACCESS_KEY=your_secret_key
-      - AWS_STORAGE_BUCKET_NAME=your_bucket_name
-      - AWS_S3_REGION_NAME=us-east-1
+      - DJANGO_SETTINGS_MODULE=onevisitorbe.settings
+      - PYTHONUNBUFFERED=1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_S3_REGION_NAME=${AWS_S3_REGION_NAME:-us-east-1}
+    depends_on:
+      - db
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "8323:8323"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d
+      - ./staticfiles:/staticfiles
+      - ./mediafiles:/mediafiles
+    depends_on:
+      - web
+
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=onevisitorbe
+      - POSTGRES_USER=onevisitorbe
+      - POSTGRES_PASSWORD=onevisitorbe
 
 volumes:
   postgres_data:

@@ -6,3 +6,4 @@ boto3
 python-decouple
 django-cors-headers
 Pillow
+drf-yasg

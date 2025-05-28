@@ -4,118 +4,157 @@ from django.utils.translation import gettext_lazy as _
 
 User = get_user_model()
 
-class Visitor(models.Model):
-    """Model to store visitor information"""
-    ip_address = models.GenericIPAddressField(_("IP Address"), null=True, blank=True)
-    user_agent = models.TextField(_("User Agent"), null=True, blank=True)
-    referrer = models.URLField(_("Referrer"), null=True, blank=True)
-    first_visit = models.DateTimeField(_("First Visit"), auto_now_add=True)
-    last_visit = models.DateTimeField(_("Last Visit"), auto_now=True)
-    user = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='visits',
-        verbose_name=_("User")
-    )
-    is_authenticated = models.BooleanField(_("Is Authenticated"), default=False)
-    country = models.CharField(_("Country"), max_length=100, null=True, blank=True)
-    city = models.CharField(_("City"), max_length=100, null=True, blank=True)
-    device_type = models.CharField(_("Device Type"), max_length=50, null=True, blank=True)
-    browser = models.CharField(_("Browser"), max_length=50, null=True, blank=True)
-    os = models.CharField(_("Operating System"), max_length=50, null=True, blank=True)
+class TimeFrame(models.Model):
+    """Model for managing time periods for analytics"""
+    name = models.CharField(_("Name"), max_length=100)
+    start_date = models.DateTimeField(_("Start Date"))
+    end_date = models.DateTimeField(_("End Date"))
+    granularity = models.CharField(_("Granularity"), max_length=20, choices=[
+        ('hourly', _('Hourly')),
+        ('daily', _('Daily')),
+        ('weekly', _('Weekly')),
+        ('monthly', _('Monthly'))
+    ])
+    created_at = models.DateTimeField(_("Created At"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("Updated At"), auto_now=True)
 
     class Meta:
-        verbose_name = _("Visitor")
-        verbose_name_plural = _("Visitors")
-        ordering = ['-last_visit']
+        verbose_name = _("Time Frame")
+        verbose_name_plural = _("Time Frames")
+        ordering = ['-start_date']
 
     def __str__(self):
-        return f"Visitor {self.ip_address} - {self.first_visit.date()}"
+        return f"{self.name} ({self.start_date.date()} - {self.end_date.date()})"
 
-class PageView(models.Model):
-    """Model to track individual page views"""
-    visitor = models.ForeignKey(
-        Visitor,
+class PageAnalytics(models.Model):
+    """Model for storing aggregated page analytics data"""
+    time_frame = models.ForeignKey(
+        TimeFrame,
         on_delete=models.CASCADE,
-        related_name='page_views',
-        verbose_name=_("Visitor")
+        related_name='page_analytics',
+        verbose_name=_("Time Frame")
     )
-    url = models.URLField(_("URL"))
-    path = models.CharField(_("Path"), max_length=255)
-    title = models.CharField(_("Page Title"), max_length=255, null=True, blank=True)
-    timestamp = models.DateTimeField(_("Timestamp"), auto_now_add=True)
-    duration = models.IntegerField(_("Duration in seconds"), null=True, blank=True)
-    is_bounce = models.BooleanField(_("Is Bounce"), default=False)
+    page_view = models.ForeignKey(
+        'visitors.PageView',
+        on_delete=models.CASCADE,
+        related_name='analytics',
+        verbose_name=_("Page View")
+    )
+    total_views = models.IntegerField(_("Total Views"), default=0)
+    unique_visitors = models.IntegerField(_("Unique Visitors"), default=0)
+    average_time_on_page = models.FloatField(_("Average Time on Page"), default=0)
+    bounce_rate = models.FloatField(_("Bounce Rate"), default=0)
+    conversion_rate = models.FloatField(_("Conversion Rate"), default=0)
+    created_at = models.DateTimeField(_("Created At"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("Updated At"), auto_now=True)
 
     class Meta:
-        verbose_name = _("Page View")
-        verbose_name_plural = _("Page Views")
-        ordering = ['-timestamp']
+        verbose_name = _("Page Analytics")
+        verbose_name_plural = _("Page Analytics")
+        ordering = ['-time_frame__start_date']
 
     def __str__(self):
-        return f"{self.visitor} - {self.path} - {self.timestamp}"
+        return f"Analytics for {self.page_view.path} - {self.time_frame}"
 
-class Session(models.Model):
-    """Model to track visitor sessions"""
+class UserBehavior(models.Model):
+    """Model for tracking user behavior patterns"""
     visitor = models.ForeignKey(
-        Visitor,
+        'visitors.Visitor',
         on_delete=models.CASCADE,
-        related_name='sessions',
+        related_name='behaviors',
         verbose_name=_("Visitor")
     )
-    start_time = models.DateTimeField(_("Start Time"), auto_now_add=True)
-    end_time = models.DateTimeField(_("End Time"), null=True, blank=True)
-    is_active = models.BooleanField(_("Is Active"), default=True)
-    session_id = models.CharField(_("Session ID"), max_length=100, unique=True)
-    page_views = models.ManyToManyField(
-        PageView,
-        related_name='sessions',
-        verbose_name=_("Page Views")
+    time_frame = models.ForeignKey(
+        TimeFrame,
+        on_delete=models.CASCADE,
+        related_name='user_behaviors',
+        verbose_name=_("Time Frame")
     )
+    average_session_duration = models.DurationField(_("Average Session Duration"), null=True)
+    pages_per_session = models.FloatField(_("Pages per Session"), default=0)
+    return_rate = models.FloatField(_("Return Rate"), default=0)
+    engagement_score = models.FloatField(_("Engagement Score"), default=0)
+    created_at = models.DateTimeField(_("Created At"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("Updated At"), auto_now=True)
 
     class Meta:
-        verbose_name = _("Session")
-        verbose_name_plural = _("Sessions")
-        ordering = ['-start_time']
+        verbose_name = _("User Behavior")
+        verbose_name_plural = _("User Behaviors")
+        ordering = ['-time_frame__start_date']
 
     def __str__(self):
-        return f"Session {self.session_id} - {self.visitor}"
+        return f"Behavior for {self.visitor} - {self.time_frame}"
 
-class Event(models.Model):
-    """Model to track specific events/actions"""
-    EVENT_TYPES = (
-        ('click', _('Click')),
-        ('scroll', _('Scroll')),
-        ('form_submit', _('Form Submit')),
-        ('download', _('Download')),
-        ('custom', _('Custom')),
-    )
-
+class Conversion(models.Model):
+    """Model for tracking conversion events"""
     visitor = models.ForeignKey(
-        Visitor,
+        'visitors.Visitor',
         on_delete=models.CASCADE,
-        related_name='events',
+        related_name='conversions',
         verbose_name=_("Visitor")
     )
-    session = models.ForeignKey(
-        Session,
-        on_delete=models.CASCADE,
-        related_name='events',
-        verbose_name=_("Session")
-    )
-    event_type = models.CharField(_("Event Type"), max_length=50, choices=EVENT_TYPES)
-    element_id = models.CharField(_("Element ID"), max_length=255, null=True, blank=True)
-    element_class = models.CharField(_("Element Class"), max_length=255, null=True, blank=True)
-    element_text = models.TextField(_("Element Text"), null=True, blank=True)
+    conversion_type = models.CharField(_("Conversion Type"), max_length=50)
+    value = models.FloatField(_("Value"), default=0)
     timestamp = models.DateTimeField(_("Timestamp"), auto_now_add=True)
     metadata = models.JSONField(_("Additional Metadata"), null=True, blank=True)
+    created_at = models.DateTimeField(_("Created At"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("Updated At"), auto_now=True)
 
     class Meta:
-        verbose_name = _("Event")
-        verbose_name_plural = _("Events")
+        verbose_name = _("Conversion")
+        verbose_name_plural = _("Conversions")
         ordering = ['-timestamp']
 
     def __str__(self):
-        return f"{self.event_type} - {self.visitor} - {self.timestamp}" 
+        return f"{self.conversion_type} - {self.visitor} - {self.timestamp}"
+
+class Report(models.Model):
+    """Model for storing generated reports"""
+    name = models.CharField(_("Name"), max_length=100)
+    report_type = models.CharField(_("Report Type"), max_length=50, choices=[
+        ('visitor', _('Visitor')),
+        ('page', _('Page')),
+        ('conversion', _('Conversion')),
+        ('custom', _('Custom'))
+    ])
+    time_frame = models.ForeignKey(
+        TimeFrame,
+        on_delete=models.CASCADE,
+        related_name='reports',
+        verbose_name=_("Time Frame")
+    )
+    data = models.JSONField(_("Report Data"), default=dict)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='reports',
+        verbose_name=_("Created By")
+    )
+    last_generated = models.DateTimeField(_("Last Generated"), null=True, blank=True)
+    created_at = models.DateTimeField(_("Created At"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("Updated At"), auto_now=True)
+
+    class Meta:
+        verbose_name = _("Report")
+        verbose_name_plural = _("Reports")
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.name} - {self.report_type}"
+
+class Metric(models.Model):
+    """Model for custom metrics"""
+    name = models.CharField(_("Name"), max_length=100)
+    description = models.TextField(_("Description"))
+    is_active = models.BooleanField(_("Is Active"), default=True)
+    configuration = models.JSONField(_("Configuration"), default=dict)
+    created_at = models.DateTimeField(_("Created At"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("Updated At"), auto_now=True)
+
+    class Meta:
+        verbose_name = _("Metric")
+        verbose_name_plural = _("Metrics")
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name 
