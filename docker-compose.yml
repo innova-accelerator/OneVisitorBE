@@ -1,13 +1,13 @@
 version: '3.8'
-
 services:
   web:
     build: .
-    command: gunicorn --config /app/gunicorn.conf.py --reload onevisitorbe.wsgi:application
     volumes:
       - .:/app
+      - static_volume:/staticfiles
+      - media_volume:/mediafiles
     ports:
-      - "8323:8323"
+      - "8000:8000"  # Web service runs on port 8000
     environment:
       - DEBUG=1
       - DJANGO_SETTINGS_MODULE=onevisitorbe.settings
@@ -15,28 +15,33 @@ services:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_S3_REGION_NAME=${AWS_S3_REGION_NAME:-us-east-1}
-    depends_on:
-      - db
+      # RDS Database Configuration
+      - DATABASE_URL=${DATABASE_URL}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+    networks:
+      - app-network
 
   nginx:
     image: nginx:latest
     ports:
-      - "8323:8323"
+      - "8323:8000"  # External port 8323, internal nginx port 8000
     volumes:
       - ./nginx:/etc/nginx/conf.d
-      - ./staticfiles:/staticfiles
-      - ./mediafiles:/mediafiles
+      - static_volume:/staticfiles
+      - media_volume:/mediafiles
     depends_on:
       - web
+    networks:
+      - app-network
 
-  db:
-    image: postgres:13
-    volumes:
-      - postgres_data:/var/lib/postgresql/data/
-    environment:
-      - POSTGRES_DB=onevisitorbe
-      - POSTGRES_USER=onevisitorbe
-      - POSTGRES_PASSWORD=onevisitorbe
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
-  postgres_data:
+  static_volume:
+  media_volume:

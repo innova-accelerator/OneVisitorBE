@@ -2,8 +2,8 @@
 FROM python:3.11-slim
 
 # Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 # Set work directory
 WORKDIR /app
@@ -24,27 +24,52 @@ COPY . .
 # Create directories for static and media files
 RUN mkdir -p /staticfiles /mediafiles
 
-# Collect static files
-RUN python manage.py collectstatic --noinput
-
-# Run migrations
-RUN python manage.py migrate
-
 # Create Gunicorn config
 RUN echo "workers = 2\n\
-bind = '0.0.0.0:8323'\n\
+bind = '0.0.0.0:8000'\n\
 timeout = 120\n\
 keepalive = 5\n\
-max-requests = 0\n\
-worker-class = 'gthread'\n\
+max_requests = 1000\n\
+max_requests_jitter = 100\n\
+worker_class = 'gthread'\n\
 threads = 2\n\
-worker-connections = 1000\n\
+worker_connections = 1000\n\
 reload = True\n\
-reload_extra_files = ['/app']\n\
+preload_app = False\n\
 " > /app/gunicorn.conf.py
 
-# Expose port
-EXPOSE 8323
+# Create entrypoint script
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+echo "Starting Django application..."\n\
+\n\
+# Wait for database to be ready\n\
+echo "Waiting for database..."\n\
+while ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER"; do\n\
+  echo "Database is unavailable - sleeping"\n\
+  sleep 1\n\
+done\n\
+echo "Database is up - continuing..."\n\
+\n\
+# Run migrations\n\
+echo "Running migrations..."\n\
+python manage.py migrate --noinput\n\
+\n\
+# Collect static files\n\
+echo "Collecting static files..."\n\
+python manage.py collectstatic --noinput\n\
+\n\
+# Start Gunicorn\n\
+echo "Starting Gunicorn..."\n\
+exec "$@"\n\
+' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 
-# Run the application with Gunicorn
+# Expose port
+EXPOSE 8000
+
+# Set entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# Default command
 CMD ["gunicorn", "--config", "/app/gunicorn.conf.py", "onevisitorbe.wsgi:application"]
