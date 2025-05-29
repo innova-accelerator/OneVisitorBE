@@ -24,20 +24,6 @@ COPY . .
 # Create directories for static and media files
 RUN mkdir -p /staticfiles /mediafiles
 
-# Create Gunicorn config
-RUN echo "workers = 2\n\
-bind = '0.0.0.0:8000'\n\
-timeout = 120\n\
-keepalive = 5\n\
-max_requests = 1000\n\
-max_requests_jitter = 100\n\
-worker_class = 'gthread'\n\
-threads = 2\n\
-worker_connections = 1000\n\
-reload = True\n\
-preload_app = False\n\
-" > /app/gunicorn.conf.py
-
 # Create entrypoint script
 RUN echo '#!/bin/bash\n\
 set -e\n\

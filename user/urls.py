@@ -1,20 +1,20 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import (
-    UserViewSet,
-    LoginView,
-    LogoutView,
-    RegisterView,
-    RefreshTokenView
-)
-
-router = DefaultRouter()
-router.register('users', UserViewSet)
+from django.urls import path
+from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
+from .views import *
 
 urlpatterns = [
-    path('', include(router.urls)),
-    path('auth/login', LoginView.as_view()),
-    path('auth/logout', LogoutView.as_view()),
-    path('auth/register', RegisterView.as_view()),
-    path('auth/refresh', RefreshTokenView.as_view()),
-] 
+    # Authentication endpoints
+    path('login/', CustomTokenObtainPairView.as_view(), name='login'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('token/verify/', TokenVerifyView.as_view(), name='token_verify'),
+    path('logout/', logout_view, name='logout'),
+    
+    # User management endpoints
+    path('register/', RegisterView.as_view(), name='register'),
+    path('profile/', UserDetailView.as_view(), name='user_profile'),
+    path('profile/update/', UserDetailView.as_view(), name='user_profile_update'),
+    path('change-password/', ChangePasswordView.as_view(), name='change_password'),
+    
+    # Alternative profile endpoint
+    path('me/', user_profile, name='current_user'),
+]
