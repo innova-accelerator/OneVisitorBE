@@ -93,16 +93,19 @@ DATABASES = {
         'PORT': config('DB_PORT', default='5432'),
     }
 }
-
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:8323",
+    "http://localhost:8000",
+    "http://127.0.0.1:8323",
+    "http://127.0.0.1:8000",
+]
 # REST Framework Configuration with JWT
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',  # JWT as primary
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication'
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.AllowAny',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
@@ -176,6 +179,14 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),  # Your custom static files
+]
+
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+]
 
 # CORS
 CORS_ALLOW_ALL_ORIGINS = True
