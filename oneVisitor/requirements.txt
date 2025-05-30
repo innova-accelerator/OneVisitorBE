@@ -1,0 +1,10 @@
+Django
+djangorestframework
+psycopg2-binary
+django-storages
+boto3
+python-decouple
+django-cors-headers
+Pillow
+drf-yasg
+djangorestframework-simplejwt

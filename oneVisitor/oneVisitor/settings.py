@@ -46,7 +46,6 @@ INSTALLED_APPS = [
     'storages',
     'sites',
     'user',
-    'analytics'
 ]
 
 MIDDLEWARE = [
@@ -90,7 +89,7 @@ DATABASES = {
         'NAME': config('DB_NAME', default='oneVisitor'),
         'USER': config('DB_USER', default='postgres'),
         'PASSWORD': config('DB_PASSWORD', default='postgres'),
-        'HOST': config('DB_HOST', default='localhost'),
+        'HOST': config('DB_HOST', default='host.docker.internal'),
         'PORT': config('DB_PORT', default='5432'),
     }
 }
@@ -125,7 +124,7 @@ SIMPLE_JWT = {
     'JWK_URL': None,
     'LEEWAY': 0,
     
-    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_TYPES': ('JWT',),
     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
@@ -179,7 +178,8 @@ AUTH_PASSWORD_VALIDATORS = [
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # CORS
-CORS_ALLOWED_ORIGINS = ["*"]
+CORS_ALLOW_ALL_ORIGINS = True
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/

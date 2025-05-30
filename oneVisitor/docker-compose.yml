@@ -1,0 +1,47 @@
+version: '3.8'
+services:
+  web:
+    build: .
+    volumes:
+      - .:/app
+      - static_volume:/staticfiles
+      - media_volume:/mediafiles
+    ports:
+      - "8001:8000"  # Web service runs on port 8000
+    environment:
+      - DEBUG=1
+      - DJANGO_SETTINGS_MODULE=oneVisitor.settings
+      - PYTHONUNBUFFERED=1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_S3_REGION_NAME=${AWS_S3_REGION_NAME:-us-east-1}
+      # RDS Database Configuration
+      - DATABASE_URL=${DATABASE_URL}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+    networks:
+      - app-network
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "8323:8000"  # External port 8323, internal nginx port 8000
+    volumes:
+      - ./nginx:/etc/nginx/conf.d
+      - static_volume:/staticfiles
+      - media_volume:/mediafiles
+    depends_on:
+      - web
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  static_volume:
+  media_volume:
